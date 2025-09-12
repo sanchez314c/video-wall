@@ -1,0 +1,38 @@
+{
+  "discoveryDate": "2025-01-22",
+  "projectName": "VideoWall",
+  "type": "desktop-application",
+  "language": "Python",
+  "framework": "PyQt5",
+  "status": "active",
+  "hasPackageJson": false,
+  "hasReadme": true,
+  "hasGitIgnore": false,
+  "hasIcon": true,
+  "hasDocs": true,
+  "dependencies": [
+    "PyQt5>=5.15.0",
+    "requests>=2.25.0",
+    "pytest>=6.0.0",
+    "pytest-qt>=3.3.0",
+    "flake8>=3.8.0",
+    "black>=20.8b1",
+    "isort>=5.7.0",
+    "py2app>=0.22"
+  ],
+  "missingEssentials": [
+    ".gitignore",
+    "PRD.md",
+    "LEARNINGS.md",
+    "TODO.md",
+    "tests directory structure",
+    "screenshots folder organization",
+    "build scripts at root level"
+  ],
+  "structure": {
+    "hasMultipleVersions": true,
+    "currentVersion": "src/",
+    "legacyVersions": "legacy/",
+    "numberOfLegacyFiles": 35
+  }
+}
