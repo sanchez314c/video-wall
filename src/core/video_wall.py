@@ -68,8 +68,8 @@ class VideoWall(QMainWindow):
         # Set up periodic refresh timer
         self._setup_refresh_timer()
         
-        # Initial content assignment
-        # self.refresh_all_videos()  # Commented out to prevent hanging
+        # Initial content assignment (delayed to prevent blocking)
+        QTimer.singleShot(1000, self.refresh_all_videos)  # Start videos after 1 second
     
     def _setup_keyboard_shortcuts(self):
         """Set up keyboard shortcuts for the application."""
