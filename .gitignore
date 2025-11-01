@@ -191,5 +191,10 @@ debug_*.log
 test_*.py
 videowall_test.log
 SESSION_BREADCRUMBS.md
-CLI_VERSION_MAP.jsonnode_modules/
+CLI_VERSION_MAP.json
+
+# Node modules
+node_modules/
+
+# Archive
 archive/
