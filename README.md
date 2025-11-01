@@ -1,70 +1,97 @@
 # VideoWall
 
-A dynamic multi-monitor video wall application with animated layouts and real-time video playback.
+A sophisticated multi-display video wall application built with PyQt5, designed for creating hardware-accelerated video installations on macOS and Linux. The application supports both M3U8 streaming and local video playback across multiple monitors with professional-grade features and animated layouts.
 
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue)
 ![PyQt5](https://img.shields.io/badge/PyQt5-5.15%2B-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
-![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux-lightgrey)
 
-## Features
+## ✨ Features
 
-- 🎬 **Multi-Video Playback**: Display up to 9 videos simultaneously in a 3x3 grid
-- 🎨 **Dynamic Layouts**: Automatic animated transitions between different layout patterns
-- 🖥️ **Multi-Monitor Support**: Spans across multiple displays automatically
-- 🎭 **Animation Effects**: Smooth scaling, rotation, and position animations
-- 🎮 **Hardware Acceleration**: Automatic GPU acceleration support (Metal, CUDA, ROCm)
-- 📁 **Local & Stream Support**: Play local video files or M3U8 streams
-- ⚡ **Real-time Performance**: Optimized for smooth playback
+- 🎬 **Multi-Video Playback**: Display up to 15 simultaneous videos with hardware acceleration
+- 🖥️ **Multi-Monitor Support**: Automatic detection and spanning across all connected displays
+- 🎨 **Dynamic Layouts**: Smooth animated transitions between professional layout patterns
+- 🌐 **Streaming Support**: M3U8/HLS streaming with automatic local fallback
+- 🎭 **Animation System**: Professional transitions with configurable timing
+- ⚡ **Hardware Acceleration**: Metal (macOS), VAAPI/VDPAU (Linux) support
+- 📊 **Real-time Monitoring**: Stream health tracking and performance metrics
+- 🔧 **Professional Configuration**: Extensive customization options
 
-## Installation
+## 🚀 Quick Start
 
 ### Prerequisites
+- **Operating System**: macOS 10.14+ or Linux (Ubuntu 18.04+)
+- **Python**: 3.8 or higher
+- **Graphics**: Hardware acceleration support recommended
+- **Memory**: 4GB RAM minimum (8GB+ recommended)
 
-- Python 3.8 or higher
-- PyQt5
-- FFmpeg (for video codec support)
-
-### Quick Install
+### Installation in 5 Minutes
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/VideoWall.git
-cd VideoWall
+# 1. Clone the repository
+git clone https://github.com/yourusername/video-wall.git
+cd video-wall
 
-# Create virtual environment
-python -m venv venv
+# 2. Create virtual environment
+python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install dependencies
+# 3. Install dependencies
 pip install -r requirements.txt
+
+# 4. Run the application
+python -m src
 ```
 
-### System Requirements
+That's it! VideoWall will start and automatically detect all connected displays.
 
-- **macOS**: 10.14+ (Metal support)
-- **Linux**: Ubuntu 18.04+ (VAAPI/VDPAU support)
-- **Windows**: Windows 10+ (DirectShow support)
-- **RAM**: 8GB minimum, 16GB recommended
-- **GPU**: Hardware video acceleration recommended
+### First Time Setup
 
-## Usage
+1. **Add Videos**: Place video files in any accessible folder or configure M3U8 streams in `config/m3u8-hosts.m3u8`
+2. **Run Application**: `python -m src`
+3. **Enjoy**: Videos will automatically load and play with animated layouts
 
-### Basic Usage
+## 📖 Documentation
+
+### For New Users
+- **[Quick Start Guide](docs/QUICK_START.md)** - Get running in 5 minutes
+- **[Installation Guide](docs/INSTALLATION.md)** - Detailed setup instructions
+- **[FAQ](docs/FAQ.md)** - Common questions and solutions
+
+### For Developers
+- **[Architecture](docs/ARCHITECTURE.md)** - System design and components
+- **[Development Guide](docs/DEVELOPMENT.md)** - Development setup and workflow
+- **[API Documentation](docs/API.md)** - Integration and extension guide
+
+### For Operations
+- **[Build & Compile](docs/BUILD_COMPILE.md)** - Build system and distribution
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment strategies
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Debugging and problem resolution
+
+### Complete Documentation Index
+See **[docs/DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)** for a complete list of all documentation.
+
+## 🎮 Usage
+
+### Basic Commands
 
 ```bash
-# Run from source
+# Run with default settings
 python -m src
 
-# Or run directly
-python main.py
+# Run with hardware acceleration
+python -m src --hwa-enabled
+
+# Run with specific video folder
+python -m src --video-path /path/to/videos
+
+# Custom grid size
+python -m src --grid-rows 2 --grid-cols 2
+
+# Debug mode with status overlay
+python -m src --debug
 ```
-
-### Select Video Folder
-
-1. When the application starts, a file dialog will appear
-2. Select a folder containing video files (MP4, MOV, AVI, MKV supported)
-3. The video wall will start with animated layouts
 
 ### Keyboard Shortcuts
 
@@ -72,24 +99,25 @@ python main.py
 - **Esc**: Exit fullscreen / Quit application
 - **F11**: Toggle fullscreen
 - **Ctrl+Q**: Quit application
+- **D**: Toggle debug overlay (when in debug mode)
 
-## Layout Patterns
+## 🎨 Layout Patterns
 
-The application randomly cycles through various layout patterns:
+VideoWall features professional layout animations that cycle every 8 seconds:
 
-- **Grid**: Traditional 3x3 grid layout
-- **Feature**: One large video with smaller tiles
-- **Columns**: Vertical column arrangement
-- **Rows**: Horizontal row arrangement
-- **Spiral**: Spiral pattern animation
-- **Diagonal**: Diagonal arrangement
-- **Random**: Completely random positions
+- **Grid Layout**: Traditional 3x3 video grid
+- **Feature Layout**: One large video with smaller tiles
+- **Columns**: Vertical column arrangements
+- **Rows**: Horizontal row arrangements
+- **Spiral**: Spiral pattern animations
+- **Diagonal**: Diagonal arrangements
+- **Random**: Dynamic positioning with smooth transitions
 
-Layouts change automatically every 8 seconds with smooth animations.
+## ⚙️ Configuration
 
-## Configuration
+### Basic Configuration
 
-Edit `src/config/settings.py` to customize:
+Edit `src/config/settings.py`:
 
 ```python
 # Grid size
@@ -99,116 +127,114 @@ DEFAULT_GRID_COLS = 3
 # Animation timing
 ANIMATION_DURATION_MS = 8000  # Layout change interval
 
-# Performance
+# Performance settings
 VIDEO_BUFFER_SIZE = 15000  # Buffer size in milliseconds
 MAX_ACTIVE_PLAYERS = 15     # Maximum concurrent videos
 ```
 
-## Project Structure
+### Streaming Configuration
 
+Edit `config/m3u8-hosts.m3u8`:
 ```
-VideoWall/
-├── src/
-│   ├── __init__.py
-│   ├── __main__.py           # Entry point
-│   ├── core/                 # Core functionality
-│   │   ├── animator.py       # Animation system
-│   │   ├── app.py           # Application initialization
-│   │   ├── display_manager.py
-│   │   ├── layout_manager.py
-│   │   ├── video_loader.py
-│   │   ├── video_manager.py
-│   │   └── video_wall.py    # Main window
-│   ├── ui/                   # User interface
-│   │   ├── dialogs.py
-│   │   └── video_tile.py
-│   ├── utils/                # Utilities
-│   │   └── file_utils.py
-│   └── config/               # Configuration
-│       └── settings.py
-├── resources/                # Assets
-│   └── icons/
-├── tests/                    # Unit tests
-├── docs/                     # Documentation
-├── requirements.txt
-├── setup.py
-└── README.md
+# Add streaming URLs (one per line)
+https://example.com/stream1.m3u8
+https://example.com/stream2.m3u8
 ```
 
-## Performance Tips
+## 🏗️ Project Structure
 
-- Start with fewer videos if experiencing lag
-- Use hardware-accelerated video codecs (H.264)
-- Close other applications to free resources
-- Ensure videos are locally stored (not network drives)
-- Lower resolution videos (720p) perform better than 4K
+```
+video-wall/
+├── src/                    # Source code
+│   ├── core/              # Core application logic
+│   ├── ui/                # User interface components
+│   ├── utils/             # Utility functions
+│   └── config/            # Configuration modules
+├── docs/                  # Comprehensive documentation
+├── scripts/               # Build and utility scripts
+├── config/                # Configuration files
+├── build_resources/       # Build assets (icons, etc.)
+└── tests/                 # Test suite
+```
 
-## Development
+## 🚀 Performance Tips
 
-### Running Tests
+### Optimize Video Playback
+- Enable hardware acceleration: `python -m src --hwa-enabled`
+- Use H.264 encoded videos for best compatibility
+- Lower video resolution (720p) for better performance
+- Store videos locally (not network drives)
+
+### System Optimization
+- Close unnecessary applications
+- Ensure sufficient RAM (8GB+ recommended)
+- Update graphics drivers
+- Use SSD storage for video files
+
+## 🛠️ Development
+
+### Development Setup
 
 ```bash
-# Run all tests
-python -m pytest tests/
+# Install development dependencies
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
 
-# Run with coverage
-python -m pytest --cov=src tests/
-```
+# Run tests
+pytest
 
-### Code Style
-
-```bash
-# Format code
+# Code formatting
 black src/
+isort src/
 
-# Lint code
+# Linting
 pylint src/
 ```
 
-## Building
-
-### Create Standalone Application
+### Build Application
 
 ```bash
-# Using PyInstaller
-pyinstaller --onefile --windowed main.spec
+# macOS
+pyinstaller VideoWall.spec --clean --noconfirm
 
-# Output will be in dist/VideoWall
+# Linux
+bash build-linux.sh
+
+# Docker build
+docker build -f Dockerfile.linux -t videowall .
 ```
 
-## Troubleshooting
+## 🤝 Contributing
 
-### Videos Not Playing
-- Ensure FFmpeg is installed
-- Check video codec compatibility
-- Verify file permissions
+We welcome contributions! See **[CONTRIBUTING.md](docs/CONTRIBUTING.md)** for guidelines.
 
-### Performance Issues
-- Reduce grid size in settings
-- Check GPU acceleration is enabled
-- Monitor CPU/GPU usage
+### Development Workflow
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'feat: add amazing feature'`
+4. Push branch: `git push origin feature/amazing-feature`
+5. Open Pull Request
 
-### Application Crashes
-- Check debug.log for errors
-- Verify PyQt5 installation
-- Update graphics drivers
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
-
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+## 🙏 Acknowledgments
 
-- PyQt5 for the robust multimedia framework
-- FFmpeg for video codec support
-- Contributors and testers
+- **PyQt5** for robust multimedia framework
+- **Qt Community** for excellent documentation and tools
+- **FFmpeg** for video codec support
+- **Contributors** and testers who help improve VideoWall
 
-## Support
+## 📞 Support
 
 For issues and questions:
-- Open an issue on [GitHub](https://github.com/yourusername/VideoWall/issues)
-- Check [documentation](docs/) for detailed guides
+
+- 🐛 **Bug Reports**: [Open an issue](https://github.com/yourusername/video-wall/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/yourusername/video-wall/discussions)
+- 📚 **Documentation**: [Complete docs](docs/)
+- 🚀 **Quick Help**: [FAQ](docs/FAQ.md)
+
+---
+
+**VideoWall** - Professional video wall solutions for digital signage, exhibitions, and installations.
