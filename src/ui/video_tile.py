@@ -2,15 +2,15 @@
 Video tile widget implementation.
 Dark Neo Glass themed.
 """
+
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtWidgets import QLabel, QSizePolicy, QProgressBar
-from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve
-from PyQt5.QtGui import QPalette
+from PyQt5.QtWidgets import QLabel, QProgressBar, QSizePolicy
 
 from src.ui.theme import (
-    get_video_tile_stylesheet,
-    get_status_label_stylesheet,
     get_loading_progress_stylesheet,
+    get_status_label_stylesheet,
+    get_video_tile_stylesheet,
 )
 
 
@@ -104,7 +104,9 @@ class VideoTile(QVideoWidget):
             progress_width = min(progress_width, self.width())
             progress_height = min(progress_height, self.height())
 
-            self.loading_progress.setGeometry(int(x), int(y), int(progress_width), int(progress_height))
+            self.loading_progress.setGeometry(
+                int(x), int(y), int(progress_width), int(progress_height)
+            )
         except Exception as e:
             print(f"Error in VideoTile reposition_loading_progress for {self.tile_id}: {e}")
 

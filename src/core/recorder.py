@@ -1,14 +1,20 @@
 """
 Screen recorder for VideoWall using ffmpeg x11grab.
 Captures the fullscreen video wall to MP4 files on the Desktop.
+Only available on Linux with X11 (not Wayland).
 """
+
 import os
-import subprocess
+import platform
 import signal
+import subprocess
 from datetime import datetime
-from PyQt5.QtWidgets import QLabel
-from PyQt5.QtCore import Qt, QTimer
+
+from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QLabel
+
+from src.ui.theme import RADIUS_SM, TEXT_HEADING
 
 
 class RecordingIndicator(QLabel):
@@ -21,12 +27,12 @@ class RecordingIndicator(QLabel):
         self.setFixedSize(90, 32)
         self._visible_state = True
 
-        self.setStyleSheet(
-            "background: rgba(220, 38, 38, 0.85);"
-            "color: #ffffff;"
-            "border-radius: 6px;"
-            "padding: 4px 8px;"
-        )
+        self.setStyleSheet(f"""
+            background: rgba(239, 68, 68, 220);
+            color: {TEXT_HEADING};
+            border-radius: {RADIUS_SM};
+            padding: 4px 8px;
+        """)
         self.hide()
 
         self._blink_timer = QTimer(self)
@@ -60,8 +66,6 @@ class ScreenRecorder:
         self.process = None
         self.is_recording = False
         self.current_file = None
-        self.recording_count = 0
-
         # Recording indicator overlay
         self.indicator = RecordingIndicator(video_wall)
         self.indicator.move(20, 20)
@@ -78,9 +82,24 @@ class ScreenRecorder:
             self.start()
         return self.is_recording
 
+    @staticmethod
+    def _is_x11_available():
+        """Check if X11 display server is available for x11grab."""
+        if platform.system() != "Linux":
+            return False
+        # Check for Wayland (x11grab doesn't work on Wayland)
+        if os.environ.get("WAYLAND_DISPLAY"):
+            return False
+        # Check that DISPLAY is set (indicates X11)
+        return bool(os.environ.get("DISPLAY"))
+
     def start(self):
         """Start recording the video wall screen region."""
         if self.is_recording:
+            return
+
+        if not self._is_x11_available():
+            print("Recording unavailable: requires Linux with X11 (not Wayland)")
             return
 
         # Get the window/screen geometry
@@ -99,39 +118,51 @@ class ScreenRecorder:
         w = w if w % 2 == 0 else w - 1
         h = h if h % 2 == 0 else h - 1
 
+        if w <= 0 or h <= 0:
+            print(f"Recording skipped: invalid dimensions {w}x{h}")
+            return
+
         # Generate output filename
-        self.recording_count += 1
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"VideoWall-Recording-{timestamp}.mp4"
         self.current_file = os.path.join(self.output_dir, filename)
 
-        # Build ffmpeg command
+        # Build ffmpeg command (list form — no shell injection)
         display = os.environ.get("DISPLAY", ":0")
         cmd = [
             "ffmpeg",
-            "-y",                           # Overwrite if exists
-            "-video_size", f"{w}x{h}",
-            "-framerate", "30",
-            "-f", "x11grab",
-            "-i", f"{display}+{x},{y}",
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-crf", "23",
-            "-pix_fmt", "yuv420p",
-            "-threads", "0",                # Use all CPU cores
-            self.current_file
+            "-y",  # Overwrite if exists
+            "-video_size",
+            f"{w}x{h}",
+            "-framerate",
+            "30",
+            "-f",
+            "x11grab",
+            "-i",
+            f"{display}+{x},{y}",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-crf",
+            "23",
+            "-pix_fmt",
+            "yuv420p",
+            "-threads",
+            "0",  # Use all CPU cores
+            self.current_file,
         ]
 
         try:
             self.process = subprocess.Popen(
-                cmd,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
+                cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )
             self.is_recording = True
             self.indicator.start()
             print(f"Recording started: {self.current_file}")
+        except FileNotFoundError:
+            print("Recording unavailable: ffmpeg not found in PATH")
+            self.is_recording = False
         except Exception as e:
             print(f"Failed to start recording: {e}")
             self.is_recording = False
@@ -143,20 +174,32 @@ class ScreenRecorder:
 
         try:
             # Send 'q' to ffmpeg stdin for graceful shutdown
-            self.process.stdin.write(b"q")
-            self.process.stdin.flush()
-            self.process.wait(timeout=5)
+            if self.process.poll() is None and self.process.stdin:
+                self.process.stdin.write(b"q")
+                self.process.stdin.flush()
+                self.process.wait(timeout=5)
+            else:
+                self.process.wait(timeout=3)
         except subprocess.TimeoutExpired:
             # Force kill if it doesn't stop gracefully
-            self.process.send_signal(signal.SIGINT)
             try:
+                self.process.send_signal(signal.SIGINT)
                 self.process.wait(timeout=3)
             except subprocess.TimeoutExpired:
                 self.process.kill()
+        except (BrokenPipeError, OSError):
+            # Process already dead, just clean up
+            try:
+                self.process.kill()
+            except OSError:
+                pass
         except Exception as e:
             print(f"Error stopping recording: {e}")
-            if self.process:
-                self.process.kill()
+            try:
+                if self.process:
+                    self.process.kill()
+            except OSError:
+                pass
 
         self.is_recording = False
         self.process = None

@@ -1,0 +1,193 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "videowall"
+version = "1.6.6"
+description = "Multi-display video wall application with M3U8 streaming and animated layouts (PyQt5)"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "J. Michaels", email = "jason@speedheathens.com"}
+]
+keywords = ["video", "wall", "multi-monitor", "m3u8", "hls", "streaming", "pyqt5", "digital-signage"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: X11 Applications :: Qt",
+    "Environment :: MacOS X",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video :: Display",
+]
+dependencies = [
+    "PyQt5>=5.15.0",
+    "PyQt5-Qt5>=5.15.0",
+    "PyQt5-sip>=12.8.0",
+    "requests>=2.28.0",
+]
+
+[project.optional-dependencies]
+build = [
+    "pyinstaller>=5.0",
+    "wheel",
+    "setuptools>=65.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-qt>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "pylint>=2.16.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "ipython>=8.0.0",
+    "ipdb>=0.13.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/sanchez314c/video-wall"
+Repository = "https://github.com/sanchez314c/video-wall"
+Issues = "https://github.com/sanchez314c/video-wall/issues"
+Changelog = "https://github.com/sanchez314c/video-wall/blob/main/CHANGELOG.md"
+
+[project.scripts]
+videowall = "src.core.app:main"
+
+[tool.setuptools]
+packages = ["src", "src.core", "src.ui", "src.utils", "src.config"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+src = ["*.m3u8"]
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311", "py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | build
+  | dist
+  | legacy
+  | archive
+  | scripts/legacy
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+skip = ["legacy", "archive", "scripts/legacy", "venv", ".venv", "build", "dist"]
+
+[tool.pylint.main]
+ignore = ["legacy", "archive", "scripts/legacy", "venv", ".venv", "build", "dist", "tests"]
+ignore-patterns = ["^\\.#"]
+
+[tool.pylint."messages control"]
+disable = [
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "too-few-public-methods",
+    "too-many-instance-attributes",
+    "too-many-arguments",
+    "too-many-locals",
+    "too-many-branches",
+    "too-many-statements",
+    "fixme",
+    "import-error",
+    "no-name-in-module",
+    "c-extension-no-member",
+]
+
+[tool.pylint.format]
+max-line-length = 100
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E203", "E501", "W503"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "legacy",
+    "archive",
+    "scripts/legacy",
+    "venv",
+    ".venv",
+    "build",
+    "dist",
+]
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = [
+    "legacy/",
+    "archive/",
+    "scripts/legacy/",
+    "venv/",
+    ".venv/",
+    "build/",
+    "dist/",
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks integration tests requiring system deps",
+    "gui: marks tests requiring a display",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/legacy/*",
+    "*/archive/*",
+    "src/__init__.py",
+    "src/__main__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+    "if TYPE_CHECKING:",
+]
+show_missing = true
+skip_covered = false

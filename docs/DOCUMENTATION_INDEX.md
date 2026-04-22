@@ -1,67 +1,102 @@
-# VideoWall Documentation Index
+# VideoWall — Documentation Index
 
-## Overview
-This directory contains comprehensive documentation for the VideoWall project, organized by topic and purpose.
+Comprehensive index of all VideoWall documentation. Last updated: 2026-04-17.
 
-## Documentation Structure
+---
 
-### Core Documentation
-- **[README.md](../README.md)** - Project overview, features, and quick start guide
-- **[CHANGELOG.md](../CHANGELOG.md)** - Version history and release notes
-- **[AGENTS.md](../AGENTS.md)** - AI assistant development guide (renamed from CLAUDE.md)
+## Root-Level Documents
 
-### User Documentation
-- **[QUICK_START.md](QUICK_START.md)** - Get started quickly with VideoWall
-- **[INSTALLATION.md](INSTALLATION.md)** - Detailed installation instructions
-- **[FAQ.md](FAQ.md)** - Frequently asked questions and troubleshooting
+| File | Purpose |
+|---|---|
+| [README.md](../README.md) | Project overview, features, quick start |
+| [CHANGELOG.md](../CHANGELOG.md) | Version history (canonical) |
+| [LICENSE](../LICENSE) | MIT license |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | Contribution guidelines |
+| [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) | Community guidelines |
+| [SECURITY.md](../SECURITY.md) | Security policy + vuln reporting |
+| [AGENTS.md](../AGENTS.md) | AI assistant guide (multi-tool: Claude, Copilot) |
+| [CLAUDE.md](../CLAUDE.md) | Claude Code project-specific guidance |
 
-### Developer Documentation
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture and design patterns
-- **[API.md](API.md)** - API reference and integration guide
-- **[DEVELOPMENT.md](DEVELOPMENT.md)** - Development setup and workflow
-- **[BUILD_COMPILE.md](BUILD_COMPILE.md)** - Build system and compilation guide
+## docs/ — Full Documentation
 
-### Project Documentation
-- **[PRD.md](PRD.md)** - Product requirements document
-- **[TECHSTACK.md](TECHSTACK.md)** - Technology stack and dependencies
-- **[TODO.md](TODO.md)** - Project roadmap and tasks
-- **[LEARNINGS.md](LEARNINGS.md)** - Project insights and lessons learned
+### Product / Specification
+| File | Purpose |
+|---|---|
+| [PRD.md](PRD.md) | Product Requirements Document — current state |
+| [TECHSTACK.md](TECHSTACK.md) | Tech stack inventory and versions |
+| [TODO.md](TODO.md) | Roadmap, open tasks |
+| [LEARNINGS.md](LEARNINGS.md) | Project insights, lessons learned |
 
-### Operations Documentation
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Deployment and distribution guide
-- **[SECURITY.md](SECURITY.md)** - Security policies and best practices
-- **[WORKFLOW.md](WORKFLOW.md)** - Development workflow and processes
+### Architecture / Engineering
+| File | Purpose |
+|---|---|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, component breakdown, data flow |
+| [API-DOCS.md](API-DOCS.md) | Internal Python module API reference |
+| [CHANGELOG.md](CHANGELOG.md) | Version history (mirror of root) |
 
-### Community Documentation
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
-- **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** - Community guidelines
+### Setup / Operations
+| File | Purpose |
+|---|---|
+| [QUICK_START.md](QUICK_START.md) | Fastest path to running the app |
+| [INSTALL.md](INSTALL.md) | Full setup (Linux, macOS, Conda) + env vars + CLI args |
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Dev environment setup, testing workflow |
+| [BUILD_COMPILE.md](BUILD_COMPILE.md) | PyInstaller build process, all platforms |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Distribution: binaries, installers, system integration |
+| [STREAMS_CONFIGURATION.md](STREAMS_CONFIGURATION.md) | M3U8 playlist format, stream sources |
 
-### Archive
-- **[archive/](archive/)** - Historical and deprecated documentation
+### Workflow / Community
+| File | Purpose |
+|---|---|
+| [WORKFLOW.md](WORKFLOW.md) | Dev workflow, branching, releases |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines (mirror) |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Community guidelines (mirror) |
+| [SECURITY.md](SECURITY.md) | Security policy (mirror) |
 
-## Quick Navigation
+### Support
+| File | Purpose |
+|---|---|
+| [FAQ.md](FAQ.md) | Frequently asked questions |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Common issues and fixes |
 
-### For New Users
-1. Read [README.md](../README.md) for project overview
-2. Follow [QUICK_START.md](QUICK_START.md) to get running
-3. Check [FAQ.md](FAQ.md) for common issues
+### Metadata
+| File | Purpose |
+|---|---|
+| [PROJECT_MANIFEST.json](PROJECT_MANIFEST.json) | Machine-readable project metadata |
 
-### For Developers
-1. Read [ARCHITECTURE.md](ARCHITECTURE.md) for system understanding
-2. Follow [DEVELOPMENT.md](DEVELOPMENT.md) for setup
-3. Review [API.md](API.md) for integration details
+---
 
-### For Contributors
-1. Read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
-2. Check [TODO.md](TODO.md) for open tasks
-3. Follow [WORKFLOW.md](WORKFLOW.md) for processes
+## Reading Path
+
+**New User**:
+1. [README.md](../README.md) — what this is
+2. [INSTALL.md](INSTALL.md) — get it installed
+3. [QUICK_START.md](QUICK_START.md) — first run
+4. [STREAMS_CONFIGURATION.md](STREAMS_CONFIGURATION.md) — add your streams
+5. [TROUBLESHOOTING.md](TROUBLESHOOTING.md) / [FAQ.md](FAQ.md) — when stuck
+
+**Developer / Contributor**:
+1. [ARCHITECTURE.md](ARCHITECTURE.md) — system understanding
+2. [API-DOCS.md](API-DOCS.md) — module interfaces
+3. [DEVELOPMENT.md](DEVELOPMENT.md) — dev setup
+4. [WORKFLOW.md](WORKFLOW.md) — process
+5. [CONTRIBUTING.md](../CONTRIBUTING.md) — pull request guidelines
+
+**Building / Releasing**:
+1. [BUILD_COMPILE.md](BUILD_COMPILE.md) — build instructions
+2. [DEPLOYMENT.md](DEPLOYMENT.md) — distribution
+3. [CHANGELOG.md](../CHANGELOG.md) — what changed
+
+**Project Lead / Reviewer**:
+1. [PRD.md](PRD.md) — what we're building
+2. [TODO.md](TODO.md) — what's left
+3. [LEARNINGS.md](LEARNINGS.md) — what we learned
+4. [TECHSTACK.md](TECHSTACK.md) — what we use
+
+---
 
 ## Documentation Standards
 
-This documentation follows the VideoWall project documentation standards:
-- Clear, concise language
-- Consistent formatting
-- Regular updates
-- Cross-references between related topics
-
-For questions about documentation, see the [CONTRIBUTING.md](CONTRIBUTING.md) guide.
+- All paths are relative
+- Each document has a single owner section in this index
+- Mirrored docs (CONTRIBUTING, SECURITY, CODE_OF_CONDUCT, CHANGELOG) live both at root (canonical) and in `docs/` (for browse-via-index ergonomics)
+- Updates to root-level docs propagate to docs/ mirrors via the pipeline

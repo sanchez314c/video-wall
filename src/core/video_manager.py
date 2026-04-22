@@ -1,22 +1,25 @@
 """
 Video management for VideoWall.
 """
-import random
-from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
-from PyQt5.QtCore import QUrl, QTimer
 
-from src.core.video_loader import VideoLoader
+import random
+
+from PyQt5.QtCore import QTimer
+from PyQt5.QtMultimedia import QMediaPlayer
+
 from src.config.settings import MAX_ACTIVE_PLAYERS
+from src.core.video_loader import VideoLoader
+
 
 class VideoManager:
     """
     Manages video players and media content for VideoWall.
     """
-    
+
     def __init__(self, video_wall, m3u8_links=None, local_videos=None):
         """
         Initialize the video manager.
-        
+
         Args:
             video_wall (VideoWall): The parent VideoWall instance
             m3u8_links (list, optional): List of M3U8 stream URLs
@@ -29,39 +32,43 @@ class VideoManager:
         self.retry_attempts = {}
         self.using_local_video = {}
         self.tried_urls = {}
-        
+
         # Create the video loader
         self.video_loader = VideoLoader(m3u8_links, local_videos)
-        
+
         # Initialize players and tracking
         self._initialize_players()
-    
+
     def _initialize_players(self):
         """Initialize media players for all tiles."""
         self.players = []
-        
+
         for i, tile in enumerate(self.tiles):
             # Create media player
             player = QMediaPlayer(None, QMediaPlayer.VideoSurface)
-            
+
             # Configure player
             self.video_loader.configure_player(player)
-            
+
             # Connect player to tile
             player.setVideoOutput(tile)
-            
+
             # Connect signals
-            player.error.connect(lambda error, p=player, idx=i: self._handle_player_error(error, p, idx))
-            player.mediaStatusChanged.connect(lambda status, p=player, idx=i: self._handle_media_status_change(status, p, idx))
-            
+            player.error.connect(
+                lambda error, p=player, idx=i: self._handle_player_error(error, p, idx)
+            )
+            player.mediaStatusChanged.connect(
+                lambda status, p=player, idx=i: self._handle_media_status_change(status, p, idx)
+            )
+
             # Add to player list
             self.players.append(player)
-            
+
             # Initialize tracking
             self.retry_attempts[i] = 0
             self.using_local_video[i] = False
             self.tried_urls[i] = set()
-    
+
     def assign_content_to_tiles(self):
         """
         Assign content (streams or local videos) to all tiles.
@@ -75,12 +82,12 @@ class VideoManager:
         visible_indices = [i for i in range(len(self.tiles)) if self.tiles[i].isVisible()]
         random.shuffle(visible_indices)
 
-        # Track URLs assigned in THIS cycle to prevent duplicates
-        assigned_this_cycle = set()
-
         # Build a shuffled pool of all available streams
-        available_streams = [url for url in self.video_loader.m3u8_links
-                           if url not in self.video_loader.failed_streams]
+        available_streams = [
+            url
+            for url in self.video_loader.m3u8_links
+            if url not in self.video_loader.failed_streams
+        ]
         random.shuffle(available_streams)
 
         max_streams = min(len(visible_indices), MAX_ACTIVE_PLAYERS, len(available_streams))
@@ -102,17 +109,19 @@ class VideoManager:
             tile = self.tiles[idx]
             player = self.players[idx]
 
-            timeout_callback = lambda url, p, i=idx: self._handle_stream_timeout(url, p, i)
+            def _stream_timeout(url, p, i=idx):
+                self._handle_stream_timeout(url, p, i)
+
+            timeout_callback = _stream_timeout
             if self.video_loader.load_stream(stream_url, player, timeout_callback):
                 player.play()
                 self.current_urls[idx] = stream_url
                 self.using_local_video[idx] = False
-                assigned_this_cycle.add(stream_url)
                 assigned_count += 1
                 tile.show_loading("Loading stream...")
             else:
                 self._fallback_to_local_video(idx)
-    
+
     def _fallback_to_local_video(self, tile_index):
         """
         Fall back to a local video for a specific tile.
@@ -144,25 +153,25 @@ class VideoManager:
             # player.play() will be called in _handle_media_status_change
 
             # Show brief status (will be hidden when media loads)
-            video_name = video_path.split('/')[-1]
+            video_name = video_path.split("/")[-1]
             tile.show_status(f"Local: {video_name}", duration_ms=3000)
         else:
             # Failed to load local video
             tile.hide_loading()
             tile.show_status("Failed to load video", is_error=True)
-    
+
     def pause_all_players(self):
         """Pause all media players."""
         for player in self.players:
             if player.state() == QMediaPlayer.PlayingState:
                 player.pause()
-    
+
     def resume_visible_players(self):
         """Resume playback on all visible tile media players."""
         for i, tile in enumerate(self.tiles):
             if tile.isVisible() and self.players[i].state() != QMediaPlayer.PlayingState:
                 self.players[i].play()
-    
+
     def _handle_stream_timeout(self, url, player, tile_index):
         """
         Handle stream loading timeout.
@@ -175,9 +184,9 @@ class VideoManager:
         print(f"Stream loading timeout for tile {tile_index}: {url[:60]}...")
 
         # Clean up the timer
-        if hasattr(player, '_loading_timer'):
+        if hasattr(player, "_loading_timer"):
             player._loading_timer.stop()
-            delattr(player, '_loading_timer')
+            delattr(player, "_loading_timer")
 
         # Mark URL as failed
         self.video_loader.failed_streams.add(url)
@@ -226,12 +235,15 @@ class VideoManager:
         player = self.players[tile_index]
         tile = self.tiles[tile_index]
 
-        timeout_callback = lambda url, p: self._handle_stream_timeout(url, p, tile_index)
+        def _retry_timeout(url, p):
+            self._handle_stream_timeout(url, p, tile_index)
+
+        timeout_callback = _retry_timeout
         if self.video_loader.load_stream(stream_url, player, timeout_callback):
             player.play()
             self.current_urls[tile_index] = stream_url
             self.using_local_video[tile_index] = False
-            tile.show_loading(f"Retrying stream...")
+            tile.show_loading("Retrying stream...")
             self.retry_attempts[tile_index] += 1
         else:
             # Stream loading failed
@@ -239,11 +251,11 @@ class VideoManager:
             self.retry_attempts[tile_index] += 1
             # Use QTimer to avoid synchronous recursion that could overflow the call stack
             QTimer.singleShot(200, lambda: self.retry_tile_stream(tile_index))
-    
+
     def _handle_player_error(self, error, player, tile_index):
         """
         Handle media player errors.
-        
+
         Args:
             error: The error code
             player (QMediaPlayer): The player that encountered the error
@@ -252,31 +264,31 @@ class VideoManager:
         if error != QMediaPlayer.NoError:
             error_messages = {
                 QMediaPlayer.ResourceError: "Resource Error",
-                QMediaPlayer.FormatError: "Format Error", 
+                QMediaPlayer.FormatError: "Format Error",
                 QMediaPlayer.NetworkError: "Network Error",
                 QMediaPlayer.AccessDeniedError: "Access Denied",
-                QMediaPlayer.ServiceMissingError: "Service Missing"
+                QMediaPlayer.ServiceMissingError: "Service Missing",
             }
             error_text = error_messages.get(error, f"Unknown Error {error}")
             error_message = f"Player error on tile {tile_index}: {error_text}"
             print(error_message)
-            
+
             # Remember failed URL
             current_url = self.current_urls.get(tile_index)
             if current_url:
                 self.tried_urls.setdefault(tile_index, set()).add(current_url)
                 print(f"  Failed URL: {current_url[:60]}...")
-            
+
             # Show error briefly
             self.tiles[tile_index].show_status(error_text, is_error=True, duration_ms=2000)
-            
+
             # Schedule retry or fallback
             QTimer.singleShot(500, lambda: self.retry_tile_stream(tile_index))
-    
+
     def _handle_media_status_change(self, status, player, tile_index):
         """
         Handle changes in media status.
-        
+
         Args:
             status: The media status
             player (QMediaPlayer): The player whose status changed
@@ -286,17 +298,17 @@ class VideoManager:
         # 0 = UnknownMediaStatus, 1 = NoMedia, 2 = LoadingMedia
         # 3 = LoadedMedia, 4 = StalledMedia, 5 = BufferingMedia
         # 6 = BufferedMedia, 7 = EndOfMedia, 8 = InvalidMedia
-        
+
         if status == QMediaPlayer.EndOfMedia:
             # Media has ended, restart it for looping
             player.setPosition(0)
             player.play()
-        
+
         elif status == QMediaPlayer.LoadedMedia:
             # Media loaded successfully, cancel timeout and hide loading
-            if hasattr(player, '_loading_timer'):
+            if hasattr(player, "_loading_timer"):
                 player._loading_timer.stop()
-                delattr(player, '_loading_timer')
+                delattr(player, "_loading_timer")
             self.tiles[tile_index].hide_loading()
             if player.state() == QMediaPlayer.StoppedState:
                 player.play()
@@ -304,14 +316,14 @@ class VideoManager:
 
         elif status == QMediaPlayer.BufferedMedia:
             # Media is buffered and ready to play, cancel timeout and hide loading
-            if hasattr(player, '_loading_timer'):
+            if hasattr(player, "_loading_timer"):
                 player._loading_timer.stop()
-                delattr(player, '_loading_timer')
+                delattr(player, "_loading_timer")
             self.tiles[tile_index].hide_loading()
             if player.state() == QMediaPlayer.StoppedState:
                 player.play()
             print(f"Stream buffered and playing on tile {tile_index}")
-        
+
         elif status == QMediaPlayer.InvalidMedia:
             print(f"Invalid media on tile {tile_index} - retrying")
             self.retry_tile_stream(tile_index)

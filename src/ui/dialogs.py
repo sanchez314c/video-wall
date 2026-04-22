@@ -2,30 +2,45 @@
 Dialog windows for VideoWall.
 Dark Neo Glass themed configuration dialog with frameless custom titlebar.
 """
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
-                            QLabel, QFileDialog, QCheckBox, QWidget, QFrame,
-                            QSpacerItem, QSizePolicy, QGraphicsDropShadowEffect)
-from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtGui import QFont, QColor
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import (
+    QCheckBox,
+    QDialog,
+    QFileDialog,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from src.ui.theme import (
-    get_dialog_title_stylesheet,
-    get_dialog_section_header_stylesheet,
+    ACCENT_TEAL,
+    BORDER_SUBTLE,
+    TEXT_MUTED,
+    TEXT_SECONDARY,
+    get_about_dialog_stylesheet,
     get_dialog_description_stylesheet,
-    get_warning_label_stylesheet,
-    get_status_info_label_stylesheet,
-    get_start_button_stylesheet,
+    get_dialog_section_header_stylesheet,
+    get_dialog_title_stylesheet,
     get_folder_button_stylesheet,
-    get_titlebar_stylesheet,
-    get_titlebar_button_close_stylesheet,
-    get_titlebar_button_minimize_stylesheet,
-    get_titlebar_button_maximize_stylesheet,
-    get_glow_line_stylesheet,
     get_glass_card_accent_stylesheet,
+    get_glow_line_stylesheet,
     get_outer_frame_stylesheet,
-    BG_VOID, BG_CARD, BG_TERTIARY, BORDER_SUBTLE, BORDER_LIGHT,
-    ACCENT_TEAL, ACCENT_BLUE, TEXT_PRIMARY, TEXT_SECONDARY,
-    TEXT_HEADING, TEXT_MUTED, TEXT_DIM, RADIUS_CARD, RADIUS_XL,
+    get_start_button_stylesheet,
+    get_status_info_label_stylesheet,
+    get_titlebar_button_about_stylesheet,
+    get_titlebar_button_close_stylesheet,
+    get_titlebar_button_maximize_stylesheet,
+    get_titlebar_button_minimize_stylesheet,
+    get_titlebar_stylesheet,
+    get_warning_label_stylesheet,
 )
 
 
@@ -82,6 +97,126 @@ class SeparatorLine(QFrame):
         """)
 
 
+class AboutDialog(QDialog):
+    """
+    About modal for VideoWall — frameless glass panel with app info.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("About VideoWall")
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Dialog)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.setFixedSize(420, 380)
+        self.setWindowModality(Qt.ApplicationModal)
+
+        root_layout = QVBoxLayout(self)
+        root_layout.setContentsMargins(16, 16, 16, 16)
+        root_layout.setSpacing(0)
+
+        outer_frame = QFrame()
+        outer_frame.setObjectName("outer_frame")
+        outer_frame.setStyleSheet(get_outer_frame_stylesheet())
+
+        frame_shadow = QGraphicsDropShadowEffect(outer_frame)
+        frame_shadow.setBlurRadius(48)
+        frame_shadow.setColor(QColor(0, 0, 0, 120))
+        frame_shadow.setOffset(0, 12)
+        outer_frame.setGraphicsEffect(frame_shadow)
+
+        frame_layout = QVBoxLayout(outer_frame)
+        frame_layout.setContentsMargins(0, 0, 0, 0)
+        frame_layout.setSpacing(0)
+
+        # Title bar
+        titlebar = CustomTitleBar(self, "About")
+        frame_layout.addWidget(titlebar)
+
+        # Content
+        content = QWidget()
+        content.setStyleSheet("background: transparent;")
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(28, 16, 28, 24)
+        content_layout.setSpacing(6)
+        content_layout.setAlignment(Qt.AlignCenter)
+
+        content.setStyleSheet(get_about_dialog_stylesheet())
+
+        app_name = QLabel("VideoWall")
+        app_name.setObjectName("about_app_name")
+        app_name.setAlignment(Qt.AlignCenter)
+        content_layout.addWidget(app_name)
+
+        version_label = QLabel("v1.6.4")
+        version_label.setObjectName("about_version")
+        version_label.setAlignment(Qt.AlignCenter)
+        content_layout.addWidget(version_label)
+
+        content_layout.addSpacing(4)
+        glow = GlowLine()
+        content_layout.addWidget(glow)
+        content_layout.addSpacing(4)
+
+        desc = QLabel("Multi-display video wall with M3U8 streaming\nand animated layout transitions.")
+        desc.setObjectName("about_description")
+        desc.setAlignment(Qt.AlignCenter)
+        desc.setWordWrap(True)
+        content_layout.addWidget(desc)
+
+        content_layout.addSpacing(8)
+
+        author = QLabel("J. Michaels (sanchez314c)")
+        author.setObjectName("about_author")
+        author.setAlignment(Qt.AlignCenter)
+        content_layout.addWidget(author)
+
+        license_label = QLabel("MIT License")
+        license_label.setObjectName("about_license")
+        license_label.setAlignment(Qt.AlignCenter)
+        content_layout.addWidget(license_label)
+
+        content_layout.addSpacing(4)
+
+        link_btn = QPushButton("github.com/sanchez314c/video-wall")
+        link_btn.setObjectName("about_link")
+        link_btn.setCursor(Qt.PointingHandCursor)
+        link_btn.setToolTip("https://github.com/sanchez314c/video-wall")
+        link_btn.clicked.connect(self._open_github)
+        content_layout.addWidget(link_btn)
+
+        content_layout.addSpacing(12)
+
+        close_btn = QPushButton("Close")
+        close_btn.setObjectName("about_close")
+        close_btn.setCursor(Qt.PointingHandCursor)
+        close_btn.clicked.connect(self.accept)
+        content_layout.addWidget(close_btn, alignment=Qt.AlignCenter)
+
+        frame_layout.addWidget(content)
+        root_layout.addWidget(outer_frame)
+
+        self._drag_pos = None
+
+    def _open_github(self):
+        """Open the GitHub repository in the default browser."""
+        from PyQt5.QtGui import QDesktopServices
+        from PyQt5.QtCore import QUrl
+        QDesktopServices.openUrl(QUrl("https://github.com/sanchez314c/video-wall"))
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._drag_pos = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if self._drag_pos is not None and event.buttons() == Qt.LeftButton:
+            self.move(event.globalPos() - self._drag_pos)
+            event.accept()
+
+    def mouseReleaseEvent(self, event):
+        self._drag_pos = None
+
+
 class CustomTitleBar(QWidget):
     """
     Custom frameless titlebar with neo-glass window controls.
@@ -115,6 +250,13 @@ class CustomTitleBar(QWidget):
 
         layout.addSpacerItem(QSpacerItem(20, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
+        # About button (?)
+        self.btn_about = QPushButton("?")
+        self.btn_about.setStyleSheet(get_titlebar_button_about_stylesheet())
+        self.btn_about.setCursor(Qt.PointingHandCursor)
+        self.btn_about.setToolTip("About")
+        self.btn_about.clicked.connect(self._show_about)
+
         # Neo-glass window controls (right side, matching Electron apps)
         self.btn_minimize = QPushButton("\u2500")  # ─
         self.btn_minimize.setStyleSheet(get_titlebar_button_minimize_stylesheet())
@@ -122,7 +264,7 @@ class CustomTitleBar(QWidget):
         self.btn_minimize.setToolTip("Minimize")
         self.btn_minimize.clicked.connect(parent_dialog.showMinimized)
 
-        self.btn_maximize = QPushButton("\u25A1")  # □
+        self.btn_maximize = QPushButton("\u25a1")  # □
         self.btn_maximize.setStyleSheet(get_titlebar_button_maximize_stylesheet())
         self.btn_maximize.setCursor(Qt.PointingHandCursor)
         self.btn_maximize.setToolTip("Maximize")
@@ -134,6 +276,7 @@ class CustomTitleBar(QWidget):
         self.btn_close.setToolTip("Close")
         self.btn_close.clicked.connect(parent_dialog.reject)
 
+        layout.addWidget(self.btn_about)
         layout.addWidget(self.btn_minimize)
         layout.addWidget(self.btn_maximize)
         layout.addWidget(self.btn_close)
@@ -151,14 +294,19 @@ class CustomTitleBar(QWidget):
     def mouseReleaseEvent(self, event):
         self._drag_pos = None
 
+    def _show_about(self):
+        """Open the About modal dialog."""
+        about = AboutDialog(self.parent_dialog)
+        about.exec_()
+
     def _toggle_maximize(self):
         """Toggle between maximized and normal window state."""
         if self.parent_dialog.isMaximized():
             self.parent_dialog.showNormal()
-            self.btn_maximize.setText("\u25A1")  # □ restore icon
+            self.btn_maximize.setText("\u25a1")  # □ restore icon
         else:
             self.parent_dialog.showMaximized()
-            self.btn_maximize.setText("\u25A3")  # ▣ maximized icon
+            self.btn_maximize.setText("\u25a3")  # ▣ maximized icon
 
 
 class LocalVideoDialog(QDialog):
@@ -367,5 +515,5 @@ class LocalVideoDialog(QDialog):
             "use_local_videos": self.enable_local_videos.isChecked(),
             "folder_path": self.folder_path,
             "skip_stream_testing": self.skip_stream_testing.isChecked(),
-            "record_streams": self.record_streams.isChecked()
+            "record_streams": self.record_streams.isChecked(),
         }

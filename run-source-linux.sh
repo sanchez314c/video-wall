@@ -67,7 +67,7 @@ export QT_ASSUME_STDERR_HAS_CONSOLE=1
 
 # Run the application
 print_success "Launching VideoWall..."
-"$PYTHON_CMD" -m src.core.app "$@"
+"$PYTHON_CMD" -m src "$@"
 
 EXIT_CODE=$?
 

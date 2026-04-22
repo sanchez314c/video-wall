@@ -32,6 +32,7 @@ TEXT_INVERSE = "#0a0b0e"
 ACCENT_TEAL = "#14b8a6"
 ACCENT_TEAL_DIM = "rgba(20, 184, 166, 0.12)"
 ACCENT_TEAL_GLOW = "rgba(20, 184, 166, 0.25)"
+ACCENT_TEAL_SELECTION = "{ACCENT_TEAL_SELECTION}"
 ACCENT_TEAL_HOVER = "#0d9488"
 ACCENT_BLUE = "#06b6d4"
 ACCENT_BLUE_DIM = "rgba(6, 182, 212, 0.15)"
@@ -71,6 +72,7 @@ SCROLLBAR_THUMB_HOVER = "#3a3a44"
 
 
 # ── Global Application Stylesheet ──────────────────────────────
+
 
 def get_app_stylesheet():
     """
@@ -207,7 +209,7 @@ def get_app_stylesheet():
         padding: 10px 14px;
         color: {TEXT_PRIMARY};
         font-size: 14px;
-        selection-background-color: rgba(20, 184, 166, 30);
+        selection-background-color: {ACCENT_TEAL_SELECTION};
     }}
 
     QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus {{
@@ -243,7 +245,7 @@ def get_app_stylesheet():
         border: 1px solid {BORDER_SUBTLE};
         border-radius: {RADIUS_SM};
         color: {TEXT_PRIMARY};
-        selection-background-color: rgba(20, 184, 166, 30);
+        selection-background-color: {ACCENT_TEAL_SELECTION};
         selection-color: {ACCENT_TEAL};
         padding: 4px;
     }}
@@ -347,7 +349,7 @@ def get_app_stylesheet():
     }}
 
     QMenuBar::item:selected {{
-        background: rgba(20, 184, 166, 30);
+        background: {ACCENT_TEAL_SELECTION};
         color: {ACCENT_TEAL};
     }}
 
@@ -365,7 +367,7 @@ def get_app_stylesheet():
     }}
 
     QMenu::item:selected {{
-        background: rgba(20, 184, 166, 30);
+        background: {ACCENT_TEAL_SELECTION};
         color: {ACCENT_TEAL};
     }}
 
@@ -465,6 +467,7 @@ def get_app_stylesheet():
 
 # ── Component-Specific Stylesheets ────────────────────────────
 
+
 def get_video_tile_stylesheet():
     """Stylesheet for video tiles in the grid."""
     return f"""
@@ -475,23 +478,13 @@ def get_video_tile_stylesheet():
     """
 
 
-def get_video_tile_loading_stylesheet():
-    """Stylesheet for the loading state of a video tile (subtle dark tint)."""
-    return f"""
-        QVideoWidget {{
-            background-color: rgba(10, 11, 14, 220);
-            border: none;
-        }}
-    """
-
-
 def get_video_tile_fade_stylesheet():
     """Stylesheet for tile animation fade effect."""
-    return f"""
-        QVideoWidget {{
+    return """
+        QVideoWidget {
             background-color: rgba(10, 11, 14, 200);
             border: none;
-        }}
+        }
     """
 
 
@@ -623,40 +616,6 @@ def get_status_info_label_stylesheet():
     """
 
 
-def get_dialog_card_stylesheet():
-    """Stylesheet for card-like sections in dialogs (QWidget containers)."""
-    return f"""
-        QWidget {{
-            background: qlineargradient(
-                spread:pad, x1:0, y1:0, x2:0.8, y2:1,
-                stop:0 {BG_CARD},
-                stop:1 {BG_TERTIARY}
-            );
-            border: 1px solid {BORDER_SUBTLE};
-            border-radius: {RADIUS_CARD};
-            padding: 16px;
-        }}
-    """
-
-
-def get_dialog_main_stylesheet():
-    """Stylesheet for the main dialog container."""
-    return f"""
-        QDialog {{
-            background: qlineargradient(
-                spread:pad, x1:0, y1:0, x2:1, y2:1,
-                stop:0 {BG_VOID},
-                stop:1 #0f1012
-            );
-            border: 1px solid {BORDER_SUBTLE};
-            border-radius: {RADIUS_XL};
-        }}
-        QDialog QWidget {{
-            background: transparent;
-        }}
-    """
-
-
 def get_start_button_stylesheet():
     """Stylesheet for the primary 'Start Video Wall' action button."""
     return f"""
@@ -743,8 +702,8 @@ def get_titlebar_button_close_stylesheet():
             font-weight: bold;
         }}
         QPushButton:hover {{
-            background: #ef4444;
-            border-color: #ef4444;
+            background: {ERROR};
+            border-color: {ERROR};
             color: #ffffff;
         }}
     """
@@ -844,5 +803,91 @@ def get_outer_frame_stylesheet():
             );
             border: 1px solid {BORDER_SUBTLE};
             border-radius: {RADIUS_XL};
+        }}
+    """
+
+
+def get_titlebar_button_about_stylesheet():
+    """Stylesheet for the About (?) button — neo-glass circle with teal accent."""
+    return f"""
+        QPushButton {{
+            background: rgba(255, 255, 255, 0.10);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            min-width: 24px;
+            max-width: 24px;
+            min-height: 24px;
+            max-height: 24px;
+            padding: 0;
+            color: {TEXT_MUTED};
+            font-size: 12px;
+            font-weight: bold;
+        }}
+        QPushButton:hover {{
+            background: {ACCENT_TEAL};
+            border-color: {ACCENT_TEAL};
+            color: {BG_VOID};
+        }}
+    """
+
+
+def get_about_dialog_stylesheet():
+    """Stylesheet for the About modal content."""
+    return f"""
+        QLabel#about_app_name {{
+            color: {TEXT_HEADING};
+            font-size: 20pt;
+            font-weight: 700;
+            background: transparent;
+            padding: 0;
+        }}
+        QLabel#about_version {{
+            color: {ACCENT_TEAL};
+            font-size: 12pt;
+            font-weight: 600;
+            background: transparent;
+            padding: 0;
+        }}
+        QLabel#about_description {{
+            color: {TEXT_SECONDARY};
+            font-size: 11pt;
+            background: transparent;
+            padding: 4px 0;
+        }}
+        QLabel#about_author {{
+            color: {TEXT_MUTED};
+            font-size: 10pt;
+            background: transparent;
+            padding: 2px 0;
+        }}
+        QLabel#about_license {{
+            color: {TEXT_DIM};
+            font-size: 9pt;
+            background: transparent;
+            padding: 2px 0;
+        }}
+        QPushButton#about_link {{
+            color: {ACCENT_TEAL};
+            font-size: 10pt;
+            background: transparent;
+            border: none;
+            padding: 2px 0;
+            text-decoration: none;
+        }}
+        QPushButton#about_link:hover {{
+            color: {TEXT_HEADING};
+        }}
+        QPushButton#about_close {{
+            background: {ACCENT_TEAL};
+            color: {TEXT_INVERSE};
+            border: none;
+            padding: 10px 28px;
+            border-radius: {RADIUS_BUTTON};
+            font-weight: 600;
+            font-size: 13px;
+            min-height: 20px;
+        }}
+        QPushButton#about_close:hover {{
+            background: {ACCENT_TEAL_HOVER};
         }}
     """

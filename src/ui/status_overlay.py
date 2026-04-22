@@ -2,9 +2,9 @@
 Status overlay components for video tiles.
 Dark Neo Glass themed.
 """
-from PyQt5.QtWidgets import QLabel, QWidget
-from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QRect
-from PyQt5.QtGui import QColor, QPainter, QPen, QFont
+
+from PyQt5.QtCore import QPropertyAnimation, QRect, Qt, QTimer
+from PyQt5.QtWidgets import QLabel
 
 from src.ui.theme import get_status_label_stylesheet
 

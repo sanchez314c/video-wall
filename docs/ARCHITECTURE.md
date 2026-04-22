@@ -1,510 +1,188 @@
-# VideoWall Architecture Documentation
+# Architecture
 
-## Table of Contents
-- [System Overview](#system-overview)
-- [Architecture Principles](#architecture-principles)
-- [Component Architecture](#component-architecture)
-- [Design Patterns](#design-patterns)
-- [Data Flow](#data-flow)
-- [Technology Stack](#technology-stack)
-- [Performance Considerations](#performance-considerations)
-- [Security Architecture](#security-architecture)
-- [Scalability Design](#scalability-design)
+## High-Level Overview
 
-## System Overview
+Video Wall is a desktop application built on PyQt5. It creates one fullscreen `QMainWindow` per connected display, each running independent video players, layout managers, and animation timers. All windows share the same `QApplication` event loop and the same pool of stream URLs loaded at startup.
 
-VideoWall is a multi-display video wall application built with PyQt5, designed to create hardware-accelerated video installations. The system supports both local video playback and M3U8 streaming across multiple monitors with dynamic animated layouts.
-
-### Core Capabilities
-- **Multi-Monitor Support**: Automatic detection and spanning across all displays
-- **Video Playback**: Hardware-accelerated decoding for multiple simultaneous streams
-- **Streaming Support**: M3U8/HLS streaming with automatic fallback
-- **Dynamic Layouts**: Animated transitions between different grid arrangements
-- **Real-time Monitoring**: Stream health tracking and performance metrics
-
-### High-Level Architecture
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    VideoWall Application                   │
-├─────────────────────────────────────────────────────────────┤
-│  UI Layer (PyQt5 Widgets)                                │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐        │
-│  │ Video Tiles │ │ Status Bar  │ │ Dialogs     │        │
-│  └─────────────┘ └─────────────┘ └─────────────┘        │
-├─────────────────────────────────────────────────────────────┤
-│  Core Application Layer                                   │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐        │
-│  │VideoManager │ │DisplayMgr   │ │LayoutMgr    │        │
-│  └─────────────┘ └─────────────┘ └─────────────┘        │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐        │
-│  │ Animator    │ │StreamTrack  │ │VideoLoader  │        │
-│  └─────────────┘ └─────────────┘ └─────────────┘        │
-├─────────────────────────────────────────────────────────────┤
-│  Utility Layer                                           │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐        │
-│  │ FileUtils   │ │StreamUtils  │ │Settings     │        │
-│  └─────────────┘ └─────────────┘ └─────────────┘        │
-├─────────────────────────────────────────────────────────────┤
-│  System Layer (Qt Multimedia, OS APIs)                    │
-└─────────────────────────────────────────────────────────────┘
+QApplication
+├── VideoWall (screen 0)       QMainWindow
+│   ├── DisplayManager         Grid layout + tile creation
+│   ├── VideoManager           Player pool + stream assignment
+│   ├── LayoutManager          Pattern selection + tile placement
+│   ├── TileAnimator           Animation scheduling + geometry animation
+│   └── ScreenRecorder         ffmpeg x11grab capture
+└── VideoWall (screen 1)       same structure
 ```
 
-## Architecture Principles
+There is no server, no IPC between windows, and no persistent state file. Configuration lives in `settings.py` and the startup dialog. Stream URLs come from `m3u8-hosts.m3u8`.
 
-### 1. Separation of Concerns
-Each component has a single, well-defined responsibility:
-- **UI Components**: Handle user interaction and display
-- **Core Logic**: Manage application state and business rules
-- **Utilities**: Provide reusable functionality
-- **System Interface**: Abstract platform-specific details
+## Component Breakdown
 
-### 2. Modularity
-The application is organized into independent modules:
-- Loose coupling between components
-- Well-defined interfaces
-- Dependency injection where appropriate
-- Easy to test and maintain
+### `src/core/app.py` — Entry Point
 
-### 3. Extensibility
-The architecture supports future enhancements:
-- Plugin system for video effects
-- Configurable layout algorithms
-- Extensible streaming protocols
-- Themeable UI components
+Handles CLI argument parsing (`--hwa-enabled`), loads the M3U8 playlist, shows the startup config dialog, then iterates `app.screens()` to create one `VideoWall` per monitor. Also sets the GStreamer plugin path on Linux for packaged binary compatibility.
 
-### 4. Performance First
-Design decisions prioritize performance:
-- Hardware acceleration where available
-- Efficient memory management
-- Asynchronous operations
-- Resource pooling
+### `src/core/video_wall.py` — Main Window
 
-## Component Architecture
+The `VideoWall` class extends `QMainWindow`. It owns and wires together all the subsystems. Key responsibilities:
+- Sets the window to fullscreen on its assigned `QScreen`
+- Handles keyboard events (Esc, F11, Right arrow, R, Ctrl+Q)
+- Runs a 30-second health check timer (`stream_check_timer`) that scans for stalled players
+- Exposes `refresh_all_videos()` which the animator calls to trigger layout changes
 
-### VideoWall (`src/core/video_wall.py`)
+### `src/core/display_manager.py` — Grid and Tiles
 
-**Purpose**: Main application window and central coordinator
+Creates the `QGridLayout` and instantiates `VideoTile` objects. The grid defaults to 4x4, creating 16 tiles total — but only 6 to 12 are visible at any time depending on the active layout pattern. Also handles fullscreen toggle (windowed vs fullscreen).
 
-**Responsibilities**:
-- Application lifecycle management
-- Component initialization and coordination
-- Global event handling
-- UI layout management
+### `src/core/video_manager.py` — Player Lifecycle
 
-**Key Methods**:
-```python
-class VideoWall(QMainWindow):
-    def __init__(self):
-        """Initialize main application window"""
-        
-    def setup_ui(self):
-        """Setup user interface components"""
-        
-    def handle_display_change(self):
-        """Handle display configuration changes"""
-        
-    def closeEvent(self, event):
-        """Clean shutdown handling"""
-```
+Creates one `QMediaPlayer` per tile at startup. On each content refresh cycle:
+1. Clears the `tried_urls` tracking state
+2. Shuffles the available stream pool
+3. Assigns unique URLs to visible tiles (no duplicates per cycle)
+4. Starts a 15-second loading timeout per player
+5. Falls back to a local video on timeout, error, or when streams run out
 
-### VideoManager (`src/core/video_manager.py`)
+Tracks `using_local_video[tile_index]` per tile so the health check skips local video tiles.
 
-**Purpose**: Multi-video playback coordination and management
+### `src/core/video_loader.py` — Media Loading
 
-**Responsibilities**:
-- Video player instance management
-- Playback synchronization
-- Stream fallback handling
-- Resource allocation
+Wraps `QMediaPlayer` configuration and media loading. Handles:
+- Muting all players (video wall is silent)
+- Setting `notifyInterval` to 100ms for smooth status updates
+- Loading M3U8 URLs via `QMediaContent(QUrl(url))`
+- Loading local videos via `QUrl.fromLocalFile(path)`
+- Detecting GPU capabilities (CUDA via `nvidia-smi`, VAAPI via `vainfo`, Metal on macOS) — detection result is informational only since PyQt5 doesn't expose per-player HWA control directly
+- Tracking `failed_streams` (a set of URLs that errored) so they're excluded from future cycles
 
-**Key Features**:
-- Up to 15 simultaneous video players
-- Hardware-accelerated decoding
-- Automatic stream switching
-- Memory-efficient buffering
+### `src/core/layout_manager.py` — Layout Patterns
 
-### DisplayManager (`src/core/display_manager.py`)
+Selects and applies grid layouts. The algorithm:
+1. Picks a random pattern from 6 options
+2. Removes all tiles from the grid and hides them
+3. Places tiles back using an occupancy grid (`occupied_cells[row][col]`) to prevent overlaps
+4. Stops at `MAX_VISIBLE_TILES` (12)
+5. Retries up to 5 times if the visible count falls outside the 6-12 range
+6. Falls back to a uniform 1x1 grid if all retries fail
 
-**Purpose**: Multi-monitor detection and configuration
+Tile sizes are capped at 2x2 to ensure enough tiles remain visible. The `feature` pattern places one 2x2 tile first at a random position, then fills the rest normally.
 
-**Responsibilities**:
-- Display detection and enumeration
-- Display arrangement calculation
-- Display change event handling
-- Multi-screen spanning
+### `src/core/animator.py` — Transition Scheduler
 
-**Platform Support**:
-- macOS: CoreGraphics display detection
-- Linux: X11/RandR display management
-- Automatic DPI scaling
+`TileAnimator` extends `QObject` and owns a `QTimer` that fires on a random interval (5, 15, or 30 seconds). On each tick it executes a pre-chosen transition type:
 
-### LayoutManager (`src/core/layout_manager.py`)
+- **resize** (90% probability) — calls `video_wall.refresh_all_videos()`, which reshuffles the layout and reassigns content
+- **swap** (10% probability) — picks two random visible tiles, moves them in the grid layout, then runs `QPropertyAnimation` on each tile's geometry
+- **full_screen** and **refresh** are disabled (0% weight) to maintain the 6-tile minimum
 
-**Purpose**: Dynamic grid layout and positioning logic
+Animation uses `QPropertyAnimation` on the `geometry` property with 8-second duration and one of three easing curves (InOutSine, OutCubic, InOutQuad). The next transition type is chosen at the end of each cycle to avoid back-to-back repeats.
 
-**Responsibilities**:
-- Grid position calculation
-- Layout transition management
-- Animation coordination
-- Layout algorithm implementation
+### Multi-Monitor Stream Distribution
+~~`stream_tracker.py`~~ removed in 2026-04-17 refactor — `GlobalVideoAssigner` had zero call sites. Each `VideoManager` (one per monitor) handles its own stream/local-video assignment independently. There is no cross-monitor coordination; with enough streams in the playlist, overlap is rare. If you need strict cross-monitor uniqueness, reintroduce a coordinator at the `app.py` level and pass it into each `VideoWall`.
 
-**Layout Patterns**:
-- Grid (traditional 3x3)
-- Feature (one large, multiple small)
-- Columns and rows
-- Spiral and diagonal
-- Random positioning
+### `src/core/recorder.py` — Screen Recorder
 
-### Animator (`src/core/animator.py`)
+`ScreenRecorder` spawns an `ffmpeg` subprocess using `x11grab` to capture the window's screen region. Output goes to `~/Desktop/VideoWall-Recording-YYYYMMDD_HHMMSS.mp4`. Graceful shutdown sends `q` to ffmpeg stdin; if that times out after 5 seconds, it escalates to SIGINT then SIGKILL. `RecordingIndicator` is a blinking red `QLabel` overlay shown during recording.
 
-**Purpose**: Smooth animation and transition effects
+### `src/ui/video_tile.py` — Tile Widget
 
-**Responsibilities**:
-- Animation timing management
-- Easing function implementation
-- Transition coordination
-- Performance optimization
+`VideoTile` extends `QVideoWidget`. Each tile has:
+- A centered `QLabel` for status messages (loading, error, stream name)
+- A `QProgressBar` for the loading animation (animated via a 100ms timer)
+- Logic to reposition both overlays on resize
 
-**Animation Types**:
-- Position transitions
-- Scale transformations
-- Opacity fades
-- Rotation effects
+### `src/ui/dialogs.py` — Startup Config Dialog
 
-### VideoLoader (`src/core/video_loader.py`)
+`LocalVideoDialog` is a frameless `QDialog` with a custom titlebar (`CustomTitleBar`) that supports drag-to-move. Built with the Dark Neo Glass design system. Collects:
+- Skip stream testing flag
+- Auto-record flag
+- Local video folder path
 
-**Purpose**: Video file loading and caching system
+### `src/ui/theme.py` — Design Token System
 
-**Responsibilities**:
-- File format validation
-- Metadata extraction
-- Thumbnail generation
-- Cache management
+Centralizes all visual constants (colors, radii, font sizes) and generates QSS stylesheet strings. No hardcoded colors exist outside this file. Key tokens:
+- `BG_VOID` (#0a0b0e) — window/background black
+- `BG_CARD` (#141518) — card/panel background
+- `ACCENT_TEAL` (#14b8a6) — primary accent
+- `TEXT_PRIMARY` (#e8e8ec) — main text
 
-**Supported Formats**:
-- MP4, WebM, MOV, AVI, MKV
-- Hardware-accelerated codecs
-- Streaming protocols
+### `src/utils/`
 
-### StreamTracker (`src/core/stream_tracker.py`)
-
-**Purpose**: M3U8 stream monitoring with fallback handling
-
-**Responsibilities**:
-- Stream health monitoring
-- Automatic fallback switching
-- Performance metrics collection
-- Error recovery
-
-## Design Patterns
-
-### 1. Observer Pattern
-**Used for**: Stream status updates, display change notifications
-
-```python
-class StreamTracker:
-    def __init__(self):
-        self.observers = []
-        
-    def add_observer(self, observer):
-        self.observers.append(observer)
-        
-    def notify_observers(self, status):
-        for observer in self.observers:
-            observer.on_stream_status_change(status)
-```
-
-### 2. Factory Pattern
-**Used for**: Video tile creation based on content type
-
-```python
-class VideoTileFactory:
-    @staticmethod
-    def create_tile(content_type, source):
-        if content_type == 'local':
-            return LocalVideoTile(source)
-        elif content_type == 'stream':
-            return StreamVideoTile(source)
-        else:
-            raise ValueError(f"Unsupported content type: {content_type}")
-```
-
-### 3. Strategy Pattern
-**Used for**: Different playback strategies for local vs streaming
-
-```python
-class PlaybackStrategy:
-    def play(self, source):
-        raise NotImplementedError
-
-class LocalPlaybackStrategy(PlaybackStrategy):
-    def play(self, source):
-        # Local file playback logic
-        pass
-
-class StreamPlaybackStrategy(PlaybackStrategy):
-    def play(self, source):
-        # Stream playback logic
-        pass
-```
-
-### 4. Singleton Pattern
-**Used for**: Display manager, configuration manager
-
-```python
-class DisplayManager:
-    _instance = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-```
+- `file_utils.py` — parses `m3u8-hosts.m3u8` (skips comments, deduplicates, basic URL validation) and recursively scans folders for video files (`.mp4`, `.mkv`, `.avi`, `.mov`, `.wmv`, `.flv`, `.webm`, `.m4v`, `.mpg`, `.mpeg`, `.3gp`). Uses `os.walk(followlinks=False)` to prevent symlink-loop scans.
+- ~~`stream_utils.py`~~ — REMOVED (2026-04-17 refactor). All 3 functions (`validate_stream`, `get_stream_metadata`, `should_retry_stream`) had zero call sites.
 
 ## Data Flow
 
-### Video Playback Flow
 ```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Source    │───▶│ VideoLoader │───▶│VideoManager│
-│ (Local/Stream)│    │             │    │             │
-└─────────────┘    └─────────────┘    └─────────────┘
-                                             │
-                                             ▼
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Display   │◀───│ LayoutMgr   │◀───│ VideoTile   │
-│   Manager   │    │             │    │   Widget    │
-└─────────────┘    └─────────────┘    └─────────────┘
-```
+startup
+  m3u8-hosts.m3u8 ──► get_all_m3u8_links() ──► m3u8_links[]
+  dialog ──► config dict (folder_path, flags)
+  get_video_files_recursively(folder_path) ──► local_videos[]
 
-### Stream Monitoring Flow
-```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│ M3U8 Stream │───▶│StreamTracker│───▶│VideoManager│
-│   Source    │    │             │    │             │
-└─────────────┘    └─────────────┘    └─────────────┘
-                      │                     │
-                      ▼                     ▼
-                ┌─────────────┐    ┌─────────────┐
-                │   Fallback  │    │   Metrics   │
-                │   Handler   │    │ Collection  │
-                └─────────────┘    └─────────────┘
-```
+per monitor
+  VideoWall.__init__
+    ├── DisplayManager: create 16 VideoTile widgets in 4x4 grid
+    ├── VideoManager: create 16 QMediaPlayer instances, connect to tiles
+    ├── LayoutManager: select and apply initial layout
+    └── TileAnimator: start random interval timer
 
-### Layout Animation Flow
-```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Timer     │───▶│ LayoutMgr   │───▶│  Animator   │
-│   Event     │    │             │    │             │
-└─────────────┘    └─────────────┘    └─────────────┘
-                                           │
-                                           ▼
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Update    │◀───│  Animation  │◀───│   Easing    │
-│   Positions │    │  Frames     │    │ Functions  │
-└─────────────┘    └─────────────┘    └─────────────┘
+layout refresh cycle (every 5-30s)
+  TileAnimator.trigger_random_action()
+    └── VideoWall.refresh_all_videos()
+          ├── animator.stop_timers_and_animations()
+          ├── video_manager.pause_all_players()
+          ├── layout_manager.apply_random_layout()
+          │     └── hide/show tiles, place in QGridLayout with row/col spans
+          ├── video_manager.assign_content_to_tiles()
+          │     ├── shuffle available streams
+          │     ├── load_stream() → QMediaPlayer.setMedia() + timeout timer
+          │     └── _fallback_to_local_video() when streams exhausted/fail
+          ├── video_manager.resume_visible_players() [500ms delay]
+          └── animator.start_random_timer()
+
+stream failure path
+  QMediaPlayer.error signal
+    └── video_manager._handle_player_error()
+          └── retry_tile_stream()
+                ├── try another URL (up to 3 attempts)
+                └── _fallback_to_local_video()
+
+health check (every 30s)
+  VideoWall.check_stream_health()
+    └── for each visible non-local tile: if not PlayingState → retry_tile_stream()
 ```
 
-## Technology Stack
+## Key Design Decisions
 
-### Core Framework
-- **PyQt5**: GUI framework and multimedia support
-- **Python 3.8+**: Core language and runtime
-- **Qt Multimedia**: Hardware-accelerated video playback
+**One window per monitor, not one window spanning all monitors.** Each `VideoWall` instance is positioned and fullscreened to its `QScreen`. This gives independent layout cycling per screen and avoids cross-screen tearing.
 
-### Platform Integration
-- **macOS**: CoreGraphics, Metal framework
-- **Linux**: X11, GStreamer, VAAPI/VDPAU
+**Pool-based tile creation.** 16 tiles are always instantiated. The layout manager hides/shows them and adjusts their grid spans, rather than creating/destroying widgets on each cycle. This avoids the overhead and flicker of widget construction.
 
-### Build and Distribution
-- **PyInstaller**: Cross-platform application packaging
-- **Docker**: Containerized deployment
-- **GitHub Actions**: CI/CD pipeline
+**Occupancy grid for placement.** `LayoutManager` tracks which grid cells are filled using a 2D boolean array. This prevents overlapping tiles when placing multi-cell spans and is O(rows*cols) to check.
 
-### Development Tools
-- **pytest**: Testing framework
-- **pylint**: Code quality analysis
-- **black**: Code formatting
-- **mypy**: Type checking
+**No duplicate streams per cycle.** `VideoManager.assign_content_to_tiles()` maintains an `assigned_this_cycle` set so two visible tiles never play the same stream simultaneously.
 
-## Performance Considerations
+**Timeout-based fallback, not error-only.** Each player gets a 15-second loading timer. Streams that never emit an error but also never buffer (common with some HLS sources) are caught and redirected to local video.
 
-### Memory Management
-- **Video Buffering**: Configurable buffer size (default 15 seconds)
-- **Player Pooling**: Reuse player instances to reduce overhead
-- **Garbage Collection**: Explicit cleanup of video resources
-- **Memory Monitoring**: Track and limit memory usage
+**Centralized theme system.** All QSS is generated from token constants in `theme.py`. This makes global style changes (color, radius, font) a single-file edit.
 
-### CPU Optimization
-- **Hardware Acceleration**: GPU-based video decoding
-- **Asynchronous Loading**: Non-blocking video loading
-- **Efficient Layouts**: Optimized position calculations
-- **Frame Rate Limiting**: Cap animation frame rates
+## Directory Structure
 
-### GPU Utilization
-- **Hardware Decoding**: Use GPU for video decompression
-- **OpenGL Integration**: Hardware-accelerated rendering
-- **Shader Effects**: GPU-based video effects
-- **Memory Management**: Efficient GPU memory usage
-
-### Network Optimization
-- **Stream Caching**: Local cache of streaming content
-- **Adaptive Bitrate**: Adjust quality based on bandwidth
-- **Connection Pooling**: Reuse network connections
-- **Error Recovery**: Fast fallback to local content
-
-## Security Architecture
-
-### Input Validation
-- **File Path Validation**: Prevent directory traversal
-- **Stream URL Validation**: Validate M3U8 URLs
-- **Configuration Validation**: Validate settings files
-- **User Input Sanitization**: Prevent injection attacks
-
-### Resource Isolation
-- **Sandboxing**: Limit file system access
-- **Network Restrictions**: Control network access
-- **Memory Limits**: Prevent memory exhaustion
-- **Process Isolation**: Separate processes for critical operations
-
-### Data Protection
-- **No Sensitive Data Storage**: Avoid storing credentials
-- **Secure Configuration**: Protect configuration files
-- **Audit Logging**: Track security-relevant events
-- **Error Handling**: Avoid information disclosure
-
-## Scalability Design
-
-### Horizontal Scaling
-- **Multi-Process Architecture**: Separate processes for video decoding
-- **Load Balancing**: Distribute video processing across cores
-- **Resource Management**: Dynamic resource allocation
-- **Performance Monitoring**: Real-time performance metrics
-
-### Vertical Scaling
-- **Hardware Detection**: Automatic hardware capability detection
-- **Adaptive Quality**: Adjust quality based on hardware
-- **Resource Optimization**: Efficient resource utilization
-- **Performance Tuning**: Automatic performance optimization
-
-### Future Extensibility
-- **Plugin Architecture**: Support for third-party extensions
-- **API Design**: RESTful API for remote control
-- **Configuration Management**: Flexible configuration system
-- **Modular Design**: Easy to add new features
-
-## Component Interaction Diagram
-
-```mermaid
-graph TD
-    A[VideoWall Main] --> B[VideoManager]
-    A --> C[DisplayManager]
-    A --> D[LayoutManager]
-    A --> E[Animator]
-    
-    B --> F[VideoLoader]
-    B --> G[StreamTracker]
-    B --> H[VideoTile Widgets]
-    
-    C --> I[Display Detection]
-    C --> J[Multi-Screen Setup]
-    
-    D --> K[Grid Calculator]
-    D --> L[Layout Algorithms]
-    
-    E --> M[Animation Engine]
-    E --> N[Easing Functions]
-    
-    F --> O[File Utils]
-    G --> P[Stream Utils]
-    
-    H --> Q[Qt Multimedia]
-    I --> R[OS Display APIs]
 ```
-
-## Error Handling Architecture
-
-### Exception Hierarchy
-```python
-class VideoWallError(Exception):
-    """Base exception for VideoWall application"""
-    pass
-
-class VideoLoadError(VideoWallError):
-    """Video loading failures"""
-    pass
-
-class DisplayError(VideoWallError):
-    """Display configuration errors"""
-    pass
-
-class StreamError(VideoWallError):
-    """Streaming related errors"""
-    pass
-
-class ConfigurationError(VideoWallError):
-    """Configuration errors"""
-    pass
+video-wall/
+├── src/                    Source code package
+│   ├── core/               Business logic (no UI dependencies except VideoWall/DisplayManager)
+│   ├── ui/                 Qt widgets and theming
+│   ├── utils/              Pure utility functions
+│   └── config/             App-wide constants
+├── m3u8-hosts.m3u8         Stream playlist (user-editable)
+├── resources/              Icons and screenshots (bundled into binary)
+├── scripts/                Build utilities and PyInstaller runtime hooks
+├── build_resources/        Build-time assets (platform icons, screenshots)
+├── docs/                   Extended documentation
+├── dist/                   PyInstaller output (not committed)
+├── archive/                Pre-restyle and pre-build backups
+├── VideoWall.spec          PyInstaller build configuration
+└── run-source-*.sh/.bat    Platform launch scripts
 ```
-
-### Error Recovery Strategies
-- **Graceful Degradation**: Fallback to reduced functionality
-- **Automatic Retry**: Retry failed operations with backoff
-- **User Notification**: Clear error messages to users
-- **Logging**: Comprehensive error logging for debugging
-
-## Testing Architecture
-
-### Test Organization
-```
-tests/
-├── unit/                   # Unit tests
-│   ├── test_video_manager.py
-│   ├── test_layout_manager.py
-│   └── test_animator.py
-├── integration/            # Integration tests
-│   ├── test_display_integration.py
-│   └── test_streaming_integration.py
-├── e2e/                   # End-to-end tests
-│   ├── test_full_workflow.py
-│   └── test_multi_display.py
-└── fixtures/              # Test data
-    ├── sample_videos/
-    └── test_streams.m3u8
-```
-
-### Test Strategy
-- **Unit Tests**: Test individual components in isolation
-- **Integration Tests**: Test component interactions
-- **End-to-End Tests**: Test complete user workflows
-- **Performance Tests**: Validate performance requirements
-
-## Configuration Architecture
-
-### Settings Hierarchy
-```python
-# Default settings
-DEFAULT_SETTINGS = {
-    'grid_rows': 3,
-    'grid_cols': 3,
-    'animation_duration': 8000,
-    'video_buffer_size': 15000,
-    'max_active_players': 15
-}
-
-# User settings (overrides defaults)
-USER_SETTINGS = load_user_config()
-
-# Runtime settings (temporary overrides)
-RUNTIME_SETTINGS = {}
-```
-
-### Configuration Sources
-1. **Default Settings**: Built-in defaults
-2. **Configuration Files**: User-editable config files
-3. **Environment Variables**: Runtime configuration
-4. **Command Line Arguments**: Session-specific settings
-
----
-
-This architecture provides a solid foundation for the VideoWall application, ensuring maintainability, performance, and extensibility for future development.

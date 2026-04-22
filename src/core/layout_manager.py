@@ -1,11 +1,10 @@
 """
 Layout management for the VideoWall application.
 """
-import random
-from PyQt5.QtWidgets import QGridLayout
-from PyQt5.QtCore import QTimer
 
-from src.config.settings import MIN_VISIBLE_TILES, MAX_VISIBLE_TILES
+import random
+
+from src.config.settings import MAX_VISIBLE_TILES, MIN_VISIBLE_TILES
 
 
 class LayoutManager:
@@ -22,6 +21,8 @@ class LayoutManager:
         self.tiles = display_manager.tiles
         self.current_layout = [(1, 1)] * len(self.tiles)
         self.occupied_cells = None
+        # Precompute tile -> index map to avoid O(n) lookups
+        self._tile_index = {id(t): i for i, t in enumerate(self.tiles)}
 
     def apply_random_layout(self):
         """
@@ -37,24 +38,19 @@ class LayoutManager:
                 print(f"Layout '{pattern}': {visible} visible tiles (attempt {attempt + 1})")
                 return pattern
             else:
-                print(f"Layout '{pattern}' produced {visible} tiles (need {MIN_VISIBLE_TILES}-{MAX_VISIBLE_TILES}), retrying...")
+                print(
+                    f"Layout '{pattern}' produced {visible} tiles (need {MIN_VISIBLE_TILES}-{MAX_VISIBLE_TILES}), retrying..."
+                )
 
         # Fallback: force a clean grid of 1x1 tiles, showing exactly MAX_VISIBLE_TILES
         self._apply_fallback_grid()
         visible = self._count_visible_tiles()
         print(f"Fallback grid: {visible} visible tiles")
-        return 'fallback_grid'
+        return "fallback_grid"
 
     def _try_layout(self):
         """Attempt a single random layout. Returns the pattern name."""
-        layout_patterns = [
-            'varied',
-            'feature',
-            'columns',
-            'rows',
-            'mixed',
-            'asymmetric'
-        ]
+        layout_patterns = ["varied", "feature", "columns", "rows", "mixed", "asymmetric"]
         pattern = random.choice(layout_patterns)
 
         # Remove all tiles from the layout
@@ -69,7 +65,7 @@ class LayoutManager:
         # Get tile sizes for this pattern (all capped at 2x2 max)
         possible_sizes = self._get_possible_sizes(pattern)
 
-        if pattern == 'feature':
+        if pattern == "feature":
             self._apply_feature_layout(possible_sizes)
         else:
             self._apply_standard_layout(possible_sizes)
@@ -100,7 +96,7 @@ class LayoutManager:
                 tile = tiles_to_place[placed]
                 self.grid_layout.addWidget(tile, row, col, 1, 1)
                 tile.show()
-                self.current_layout[self.tiles.index(tile)] = (1, 1)
+                self.current_layout[self._tile_index[id(tile)]] = (1, 1)
                 self.occupied_cells[row][col] = True
                 placed += 1
             if placed >= MAX_VISIBLE_TILES:
@@ -111,15 +107,15 @@ class LayoutManager:
         Get possible tile sizes based on the layout pattern.
         All sizes capped at 2x2 max to ensure 6-12 visible tiles.
         """
-        if pattern == 'varied':
+        if pattern == "varied":
             return [(2, 2), (1, 2), (2, 1), (1, 1), (1, 1), (1, 1)]
-        elif pattern == 'feature':
+        elif pattern == "feature":
             return [(2, 2), (1, 2), (2, 1), (1, 1)]
-        elif pattern == 'columns':
+        elif pattern == "columns":
             return [(2, 1), (1, 1), (1, 1)]
-        elif pattern == 'rows':
+        elif pattern == "rows":
             return [(1, 2), (1, 1), (1, 1)]
-        elif pattern == 'mixed':
+        elif pattern == "mixed":
             return [(2, 2), (1, 2), (2, 1), (1, 1)]
         else:  # asymmetric
             return [(2, 2), (2, 1), (1, 2), (1, 1)]
@@ -229,7 +225,7 @@ class LayoutManager:
 
                     self.grid_layout.addWidget(tile, row, col, row_span, col_span)
                     tile.show()
-                    self.current_layout[self.tiles.index(tile)] = (row_span, col_span)
+                    self.current_layout[self._tile_index[id(tile)]] = (row_span, col_span)
                     return True
         return False
 
@@ -244,6 +240,6 @@ class LayoutManager:
                     tile = remaining_tiles.pop(0)
                     self.grid_layout.addWidget(tile, row, col, 1, 1)
                     tile.show()
-                    self.current_layout[self.tiles.index(tile)] = (1, 1)
+                    self.current_layout[self._tile_index[id(tile)]] = (1, 1)
                     self.occupied_cells[row][col] = True
                     filled += 1

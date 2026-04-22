@@ -5,6 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.6] - 2026-04-22 — Repo Pipeline Pass
+
+End-to-end repo pipeline (12 steps) executed against the project. All steps pass; secrets audit clean.
+
+### Added
+- `pyproject.toml` — PEP-621 metadata + tool configs (black, isort, pylint, flake8, mypy, pytest, coverage)
+- `.github/workflows/test.yml` — pytest matrix (Python 3.8-3.12) under Xvfb
+- `.github/workflows/lint.yml` — black/isort/flake8/pylint
+- `.github/ISSUE_TEMPLATE/bug_report.md` + `feature_request.md`
+- `.github/PULL_REQUEST_TEMPLATE.md`
+- `AboutDialog` (src/ui/dialogs.py) — frameless glass panel with app info, MIT license, GitHub link
+- "?" About button in `CustomTitleBar` wired to open `AboutDialog`
+- `_is_x11_available()` platform guard in `ScreenRecorder` — fail-fast on macOS/Windows/Wayland
+- `os.walk(followlinks=False)` symlink-loop guard in `file_utils.py`
+
+### Changed
+- `docs/PRD.md` rewritten to reflect actual current state (was vision-mode with inflated targets)
+- `docs/API-DOCS.md` rewritten from 748B stub to full module API reference
+- `docs/INSTALL.md` consolidated from `SETUP.md` (more thorough setup steps)
+- `docs/ARCHITECTURE.md` synchronized with current source (removed stream_tracker section)
+- `docs/DOCUMENTATION_INDEX.md` rewritten to reflect actual file list
+- `docs/PROJECT_MANIFEST.json` updated with current stats (3488 LOC, 21 files)
+- `src/config/settings.py` — fixed `ICON_PATH` (was `resources/icon.png`, now `resources/icons/icon.png`)
+- `run-source-linux.sh` — entry point standardized to `python -m src` (was `python -m src.core.app`)
+- `src/core/animator.py` — orphaned stylesheet revert timer now tracked + cancelled with animation
+- `src/core/layout_manager.py` — replaced O(n²) `tiles.index()` with O(1) dict lookup
+- `src/core/recorder.py` — safe subprocess cleanup (poll-before-write, BrokenPipeError/OSError handlers)
+- `src/core/video_loader.py` — rewrote `get_random_stream()` to iterative fallback (was recursive, infinite-loop risk)
+- `src/core/video_wall.py` — `closeEvent` properly stops players + sets NullMedia + clears list
+- `src/ui/theme.py` — centralized ACCENT_TEAL_SELECTION, removed hardcoded #ef4444 references
+- `VideoWall-arm64.spec`, `VideoWall-intel.spec` — added `runtime_hooks`, m3u8 in datas, PyQt5.QtNetwork hidden import, fixed icon paths
+- `resources/screenshots/main-app-image.png` — replaced with current Neo-Noir Glass dialog screenshot showing About button
+
+### Removed
+- `src/core/stream_tracker.py` — `GlobalVideoAssigner` had zero call sites (147 LOC)
+- `src/utils/stream_utils.py` — `validate_stream`, `get_stream_metadata`, `should_retry_stream` had zero call sites (89 LOC)
+- `src/core/video_loader.py` — 120 lines of dead `_detect_gpu_capabilities()` (never called) + `gpu_info` dict + `current_gpu_index`
+- `src/config/settings.py` — `VIDEO_BUFFER_SIZE`, `HARDWARE_DECODE_PRIORITY`, `HARDWARE_ACCEL_STRATEGY`, `DEFAULT_CONFIG` (no source readers)
+- `src/core/animator.py` — `current_layout` dead attribute
+- `src/core/recorder.py` — `recording_count` write-only attribute
+- `src/ui/theme.py` — 3 dead theme functions (`get_video_tile_loading_stylesheet`, `get_dialog_card_stylesheet`, `get_dialog_main_stylesheet`)
+- `src/core/video_manager.py` — `assigned_this_cycle` unused set
+- Root: `AUDIT_REPORT.md` (regenerated), `BUILD_REPORT.md`, `implement.md`, `VERSION_MAP.md` (transient)
+- `docs/CLAUDE.do` (typo file, was portfolio meta-doc not project doc)
+- `dev/` folder (stale duplicates of docs/)
+- `SETUP.md`, `ARCHITECTURE.md` (root duplicates consolidated into docs/)
+- `dist_old/` (empty), `scripts/compile-build-dist-universal.sh.backup`
+- ~30 unused PyQt5 imports across 11 files (formatter pass)
+
+### Fixed
+- F-01 HIGH: `recorder.start()` no longer silently leaks ffmpeg on non-X11 platforms
+- F-02 HIGH: `recorder.stop()` handles already-dead process without crash
+- F-03 MED: dead GPU detection bloat removed (-120 LOC, -1 subprocess import)
+- F-04 MED: `get_random_stream()` infinite recursion when all streams excluded → iterative fallback
+- F-05 MED: closeEvent now releases QMediaPlayer + GStreamer pipeline resources
+- F-06 LOW: symlink-loop scan in `get_video_files_recursively`
+- F-07 LOW: O(n²) tile index lookups → O(1)
+- F-08 LOW: spec icon parameter type (list → str)
+- F-09 MED: macOS specs missing runtime_hooks/m3u8/icon paths
+- F-10 LOW: orphaned stylesheet revert timer survives animation cancellation
+- F-11 MED: ffmpeg crash on zero-dimension capture (added dimension validation)
+
+### Security
+- Zero secrets in git history (verified by 3-scan audit: tracked .env, full-history pattern scan, HEAD credential strings)
+- All subprocess calls use list-form args (no shell=True)
+- No `eval()` / `exec()` / `os.system()` anywhere
+
+### Stats
+- LOC: 3716 → 3488 (-228, -6.1%)
+- Files: 23 → 21 (-2 dead modules)
+- flake8: clean (0 issues)
+- compileall: clean (exit 0)
+
+### Pipeline Reports
+- `LINT_REPORT.md`, `AUDIT_REPORT.md`, `WIRE_AUDIT_REPORT.md`, `RESTYLE_REPORT.md`, `CODEREVIEW_REPORT.md`, `PIPELINE_LOG.md`
+
 ## [1.6.5] - 2026-03-14 17:10 UTC
 
 ### Fixed — Forensic Code Audit Remediation

@@ -2,7 +2,7 @@
 
 A multi-display video wall application built with Python and PyQt5. Plays M3U8 streams and local videos across one or more monitors simultaneously, with automatic layout cycling, stream health monitoring, and screen recording.
 
-![Version](https://img.shields.io/badge/version-1.6.4-blue.svg)
+![Version](https://img.shields.io/badge/version-1.6.6-blue.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python)](https://www.python.org/)
 [![PyQt5](https://img.shields.io/badge/PyQt5-5.15%2B-41CD52?logo=qt)](https://www.riverbankcomputing.com/software/pyqt/)
